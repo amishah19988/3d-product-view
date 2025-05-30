@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String   @id
+  shop          String
+  state         String
+  isOnline      Boolean  @default(false)
+  scope         String?
+  expires       String?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean  @default(false)
+  locale        String?
+  collaborator  Boolean? @default(false)
+  emailVerified Boolean? @default(false)
+}
+
+model Account {
+  username  String    @unique
+  email     String    @unique
+  serialkey String    @unique
+  shop      String    @unique @default("")
+  createdat DateTime? @default(now()) @db.Timestamp(6)
+  updatedat DateTime? @default(now()) @db.Timestamp(6)
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+}
+
+model AgeVerificationRules {
+  id         String   @id
+  shop       String   @unique
+  visibility String   @default("specific")
+  pageUrls   String[] @default([])
+}
+
+model AgeVerificationSettings {
+  id                         String  @id
+  shop                       String  @unique
+  serialKey                  String
+  status                     String
+  verificationType           String
+  ageLimit                   Int
+  linkTitle                  String?
+  anchorText                 String?
+  anchorUrl                  String?
+  textColor                  String?
+  buttonLabelLeft            String
+  buttonLabelRight           String
+  popupTitle                 String
+  headerBackgroundColor      String
+  bodyBackgroundColor        String
+  iconImage                  String?
+  createdAt                  String?
+  updatedAt                  String?
+  redirectUrl                String?
+  underAgeMessage            String?
+  underAgeNoticeType         String?
+  contentSubtitle            String?
+  contentTitle               String?
+  buttonLeftBackgroundColor  String? @default("#420642")
+  buttonLeftTextColor        String? @default("#ffffff")
+  buttonRightBackgroundColor String? @default("#420642")
+  buttonRightTextColor       String? @default("#ffffff")
+  contentSubtitleColor       String? @default("#ffffff")
+  contentTitleColor          String? @default("#ffffff")
+  cookieLifetime             Int?    @default(30)
+}
+
+model ThreeDProductViewerSettings {
+  id            String  @id @default(uuid())
+  shop          String  @unique
+  serialKey     String
+  status        String
+  otherFeatures String  @default("Auto Zoom in Zoom out and Rotate")
+  width         Int?    @default(350)
+  height        Int?    @default(350)
+  createdAt     String?
+  updatedAt     String?
+
+  @@map("ThreeDProductViewerSettings")
+}
+
+model Product {
+  id       String  @id
+  shop     String
+  title    String
+  imageSrc String?
+
+  @@unique([id, shop], name: "id_shop")
+}
+
+model ThreeDProductViewerModel {
+  id        String  @id @default(uuid())
+  shop      String
+  productId String
+  name      String
+  zipFile   String?
+  createdAt String?
+
+  @@unique([productId, shop], name: "productId_shop")
+  @@map("ThreeDProductViewerModel")
+}

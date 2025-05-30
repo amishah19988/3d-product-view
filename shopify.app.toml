@@ -1,0 +1,36 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "82cace0bad4d01c745d554c82ceaef53"
+name = "3D Product View"
+handle = "3d-product-view"
+application_url = "https://amplifier-serious-copyrighted-funeral.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://amplifier-serious-copyrighted-funeral.trycloudflare.com/auth/callback",
+  "https://amplifier-serious-copyrighted-funeral.trycloudflare.com/auth/shopify/callback",
+  "https://amplifier-serious-copyrighted-funeral.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false

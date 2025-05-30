@@ -1,0 +1,26 @@
+{% comment %} 3D Product Viewer App Embed {% endcomment %}
+{% if shop.permanent_domain %}
+  <div id="threed-product-viewer-container" style="display: none;"></div>
+
+  <div id="threed-product-viewer">
+    <div id="threed-product-viewer-content">
+      <!-- JS will populate this content -->
+    </div>
+  </div>
+
+  <script type="module" src="{{ 'model-viewer.min.js' | asset_url }}" defer></script>
+  <script src="{{ 'threed-product-viewer.js' | asset_url }}" defer></script>
+  <script>
+    window.threedProductViewerShop = {{ shop.permanent_domain | json }};
+    window.threedProductId = {{ product.id | json }};
+    window.threedIconUrl = {{ '360-view-icon.png' | asset_url | json }};
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "3D Product Viewer",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
