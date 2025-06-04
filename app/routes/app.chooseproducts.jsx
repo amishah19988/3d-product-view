@@ -318,7 +318,17 @@ const ThreeDProductViewerPage = () => {
   const [miPageInfo, setMiPageInfo] = useState(miLoaderData.pageInfo);
   const [miAccountForm, setMiAccountForm] = useState({ username: '', email: '' });
   const [miEmailError, setMiEmailError] = useState('');
+  const [miProductNames, setMiProductNames] = useState({}); // New state to manage name values for each product
   const miHandledActionIds = useRef(new Set());
+
+  // Initialize product names from threeDModels on mount
+  useEffect(() => {
+    const initialNames = {};
+    miThreeDModels.forEach((model) => {
+      initialNames[model.productId] = model.name || '';
+    });
+    setMiProductNames(initialNames);
+  }, [miThreeDModels]);
 
   const miValidateEmail = (email) => {
     const miEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -339,6 +349,13 @@ const ThreeDProductViewerPage = () => {
     if (miField === 'email') {
       setMiEmailError(miValidateEmail(miValue));
     }
+  };
+
+  const miHandleNameChange = (miProductId) => (miValue) => {
+    setMiProductNames((miPrev) => ({
+      ...miPrev,
+      [miProductId]: miValue,
+    }));
   };
 
   const miHandleFileUpload = (miProductId) => (miE) => {
@@ -707,8 +724,10 @@ const ThreeDProductViewerPage = () => {
                                   <p style={fieldLabelStyle}>Enter the Name</p>
                                   <TextField
                                     name="name"
-                                    defaultValue={miThreeDModel?.name || ''}
+                                    value={miProductNames[miProduct.id] || ''} // Controlled value
+                                    onChange={miHandleNameChange(miProduct.id)} // Handle changes
                                     style={fieldInputStyle}
+                                    autoComplete="off"
                                   />
                                 </div>
                               </div>
