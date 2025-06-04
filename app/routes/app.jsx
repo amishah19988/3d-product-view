@@ -23,8 +23,6 @@ export default function App() {
                 Home
               </Link>
                <Link to="/app/3dproductview-config-settings">3D Viewer Settings</Link> 
-               <Link to="/app/chooseproducts">Choose Products</Link>
-               <Link to="/app/bulk-upload">Upload CSV</Link>
             </NavMenu>
       <Outlet />
     </AppProvider>
