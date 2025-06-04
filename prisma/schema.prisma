@@ -35,46 +35,6 @@ model Account {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 }
 
-model AgeVerificationRules {
-  id         String   @id
-  shop       String   @unique
-  visibility String   @default("specific")
-  pageUrls   String[] @default([])
-}
-
-model AgeVerificationSettings {
-  id                         String  @id
-  shop                       String  @unique
-  serialKey                  String
-  status                     String
-  verificationType           String
-  ageLimit                   Int
-  linkTitle                  String?
-  anchorText                 String?
-  anchorUrl                  String?
-  textColor                  String?
-  buttonLabelLeft            String
-  buttonLabelRight           String
-  popupTitle                 String
-  headerBackgroundColor      String
-  bodyBackgroundColor        String
-  iconImage                  String?
-  createdAt                  String?
-  updatedAt                  String?
-  redirectUrl                String?
-  underAgeMessage            String?
-  underAgeNoticeType         String?
-  contentSubtitle            String?
-  contentTitle               String?
-  buttonLeftBackgroundColor  String? @default("#420642")
-  buttonLeftTextColor        String? @default("#ffffff")
-  buttonRightBackgroundColor String? @default("#420642")
-  buttonRightTextColor       String? @default("#ffffff")
-  contentSubtitleColor       String? @default("#ffffff")
-  contentTitleColor          String? @default("#ffffff")
-  cookieLifetime             Int?    @default(30)
-}
-
 model ThreeDProductViewerSettings {
   id            String  @id @default(uuid())
   shop          String  @unique
