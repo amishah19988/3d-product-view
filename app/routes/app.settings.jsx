@@ -1,9 +1,10 @@
 import { json, redirect } from '@remix-run/node';
 import { Form, useLoaderData, useActionData, useNavigation, useSubmit, useNavigate } from '@remix-run/react';
-import { Frame, Page, Toast, Card, Button, Text, Modal, Banner } from '@shopify/polaris';
+import { Frame, Page, Toast, Card, Button, Text, Modal, Banner, Layout, Spinner } from '@shopify/polaris';
 import { authenticate } from '../shopify.server';
 import prisma from '../db.server';
 import React, { useState, useEffect } from 'react';
+import NavigationBar from './NavigationBar';
 
 export const loader = async ({ request }) => {
   try {
@@ -45,10 +46,10 @@ export const action = async ({ request }) => {
     }
 
     const shop = session.shop;
-    const miFormData = await request.formData();
-    const miActionType = miFormData.get('action');
+    const formData = await request.formData();
+    const actionType = formData.get('action');
 
-    if (miActionType === 'deleteAccount') {
+    if (actionType === 'deleteAccount') {
       const account = await prisma.account.findFirst({
         where: { shop },
       });
@@ -81,10 +82,10 @@ export const action = async ({ request }) => {
       }, { status: 200 });
     }
 
-    const miUsername = miFormData.get('username');
-    const miEmail = miFormData.get('email');
+    const username = formData.get('username');
+    const email = formData.get('email');
 
-    if (!miUsername || !miEmail) {
+    if (!username || !email) {
       return json({ success: false, error: 'Username and email are required' }, { status: 400 });
     }
 
@@ -96,16 +97,16 @@ export const action = async ({ request }) => {
       await prisma.account.update({
         where: { id: existingAccount.id },
         data: {
-          username: miUsername,
-          email: miEmail,
+          username,
+          email,
           updatedat: new Date(),
         },
       });
     } else {
       await prisma.account.create({
         data: {
-          username: miUsername,
-          email: miEmail,
+          username,
+          email,
           shop,
           serialkey: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
           createdat: new Date(),
@@ -130,26 +131,28 @@ const AccountSettings = () => {
   const miNavigation = useNavigation();
   const miSubmit = useSubmit();
   const miNavigate = useNavigate();
-  const [miShowToast, setMiShowToast] = useState(false);
-  const [miFormChanged, setMiFormChanged] = useState(false);
-  const [miShowDeleteModal, setMiShowDeleteModal] = useState(false);
+  const [miShowToast, miSetShowToast] = useState(false);
+  const [miFormChanged, miSetFormChanged] = useState(false);
+  const [miShowDeleteModal, miSetShowDeleteModal] = useState(false);
 
-  const [miFormData, setMiFormData] = useState({
+  const [miFormData, miSetFormData] = useState({
     username: account?.username || '',
     email: account?.email || '',
     serialkey: account?.serialkey || '',
+    shopUrl: shop || '',
   });
 
   useEffect(() => {
     if (miActionData && miNavigation.state === 'idle') {
-      setMiShowToast(true);
-      setMiFormChanged(false);
+      miSetShowToast(true);
+      miSetFormChanged(false);
 
       if (miActionData.deleteSuccess) {
-        setMiFormData({
+        miSetFormData({
           username: '',
           email: '',
           serialkey: '',
+          shopUrl: '',
         });
         setTimeout(() => {
           miNavigate('/app');
@@ -158,22 +161,23 @@ const AccountSettings = () => {
     }
   }, [miActionData, miNavigation.state, miNavigate]);
 
-  const miHandleInputChange = (miE) => {
-    const { name, value } = miE.target;
-    setMiFormData(miPrev => ({
-      ...miPrev,
+  const miHandleInputChange = (e) => {
+    const { name, value } = e.target;
+    miSetFormData((prev) => ({
+      ...prev,
       [name]: value,
     }));
-    setMiFormChanged(true);
+    miSetFormChanged(true);
   };
 
   const miHandleDiscard = () => {
-    setMiFormData({
+    miSetFormData({
       username: account?.username || '',
       email: account?.email || '',
       serialkey: account?.serialkey || '',
+      shopUrl: shop || '',
     });
-    setMiFormChanged(false);
+    miSetFormChanged(false);
   };
 
   const miHandleDeleteAccount = () => {
@@ -181,21 +185,21 @@ const AccountSettings = () => {
       { action: 'deleteAccount' },
       { method: 'post' },
     );
-    setMiShowDeleteModal(false);
+    miSetShowDeleteModal(false);
   };
 
   const miToastMarkup = miShowToast && (
     <Toast
       content={miActionData?.message || (miActionData?.success ? 'Changes saved successfully' : 'An error occurred')}
       error={!miActionData?.success}
-      onDismiss={() => setMiShowToast(false)}
+      onDismiss={() => miSetShowToast(false)}
     />
   );
 
   const miDeleteModal = (
     <Modal
       open={miShowDeleteModal}
-      onClose={() => setMiShowDeleteModal(false)}
+      onClose={() => miSetShowDeleteModal(false)}
       title="Delete Account"
       primaryAction={{
         content: 'Delete',
@@ -206,7 +210,7 @@ const AccountSettings = () => {
       secondaryActions={[
         {
           content: 'Cancel',
-          onAction: () => setMiShowDeleteModal(false),
+          onAction: () => miSetShowDeleteModal(false),
         },
       ]}
     >
@@ -218,18 +222,25 @@ const AccountSettings = () => {
     </Modal>
   );
 
+  const isNavigating = miNavigation.state !== 'idle';
+
   if (error) {
     return (
-      <Frame>
-        <Page title="Account Settings">
-          <Card sectioned>
-            <Text variant="headingMd" as="h2" color="critical">
-              Error Loading Account Information
-            </Text>
-            <Text as="p" color="critical">
-              {error}. Please try refreshing the page or contact support if the issue persists.
-            </Text>
-          </Card>
+      <Frame loading={isNavigating}>
+        <Page title="Account">
+          <Layout>
+            <Layout.Section>
+              <NavigationBar />
+              <Card sectioned>
+                <Text variant="headingMd" as="h2" color="critical">
+                  Error Loading Account Information
+                </Text>
+                <Text as="p" color="critical">
+                  {error}. Please try refreshing the page or contact support if the issue persists.
+                </Text>
+              </Card>
+            </Layout.Section>
+          </Layout>
         </Page>
       </Frame>
     );
@@ -237,115 +248,186 @@ const AccountSettings = () => {
 
   if (!shop && !error) {
     return (
-      <Frame>
-        <Page title="Account Settings">
-          <Card sectioned>
-            <Text variant="headingMd" as="h2">
-              Loading Account Information...
-            </Text>
-          </Card>
+      <Frame loading={isNavigating}>
+        <Page title="Account">
+          <Layout>
+            <Layout.Section>
+              <NavigationBar />
+              <Card sectioned>
+                <Text variant="headingMd" as="h2">
+                  Loading Account Information...
+                </Text>
+              </Card>
+            </Layout.Section>
+          </Layout>
         </Page>
       </Frame>
     );
   }
 
   return (
-    <Frame>
-      <Page title="Account Settings">
+    <Frame loading={isNavigating}>
+      <Page title="Account">
         {miDeleteModal}
         {miToastMarkup}
-        <Card sectioned title="Account Information">
-          <Form method="post">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Serial Key
-                </label>
-                <input
-                  type="text"
-                  value={miFormData.serialkey}
-                  readOnly
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #dfe3e8',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    background: '#f5f5f5',
-                  }}
-                />
-              </div>
+        <Layout>
+          <Layout.Section>
+            <NavigationBar />
+            <Card sectioned>
+              <Form method="post">
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  {/* Left Section: Username and Email */}
+                  <div style={{ flex: 1 }}>
+                    <Text variant="headingSm" as="h3">
+                      User name
+                    </Text>
+                    <div style={{ display: 'flex', alignItems: 'center', marginTop: '8px', marginBottom: '16px', position: 'relative' }}>
+                      <img
+                        src="/UsrAccount.svg"
+                        alt="User"
+                        style={{ width: '40px', height: '40px' }}
+                      />
+                      <div style={{ position: 'relative', flex: 1, marginLeft: '8px' }}>
+                        <input
+                          type="text"
+                          name="username"
+                          value={miFormData.username}
+                          onChange={miHandleInputChange}
+                          style={{
+                            width: '100%',
+                            padding: '10px 40px 10px 10px',
+                            border: '1px solid #dfe3e8',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            background: '#f5f5f5',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <img
+                          src="/edit.svg"
+                          alt="Edit"
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '20px',
+                            height: '20px',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => {}}
+                        />
+                      </div>
+                    </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Username
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  value={miFormData.username}
-                  onChange={miHandleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #dfe3e8',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                  }}
-                />
-              </div>
+                    <Text variant="headingSm" as="h3">
+                      Email
+                    </Text>
+                    <div style={{ display: 'flex', alignItems: 'center', marginTop: '8px', position: 'relative' }}>
+                      <img
+                        src="/Mail.svg"
+                        alt="Email"
+                        style={{ width: '40px', height: '40px' }}
+                      />
+                      <div style={{ position: 'relative', flex: 1, marginLeft: '8px' }}>
+                        <input
+                          type="email"
+                          name="email"
+                          value={miFormData.email}
+                          onChange={miHandleInputChange}
+                          style={{
+                            width: '100%',
+                            padding: '10px 40px 10px 10px',
+                            border: '1px solid #dfe3e8',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            background: '#f5f5f5',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <img
+                          src="/edit.svg"
+                          alt="Edit"
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '20px',
+                            height: '20px',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => {}}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={miFormData.email}
-                  onChange={miHandleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #dfe3e8',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                  }}
-                />
-              </div>
-
-              {miFormChanged && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <Button onClick={miHandleDiscard}>
-                    Discard
-                  </Button>
-                  <Button
-                    primary
-                    submit
-                    loading={miNavigation.state === 'submitting'}
-                    disabled={miNavigation.state === 'submitting'}
-                  >
-                    Save Changes
-                  </Button>
+                  {/* Right Section: Shop URL */}
+                  <div style={{ flex: 1 }}>
+                    <Text variant="headingSm" as="h3">
+                      Shop URL
+                    </Text>
+                    <div style={{ display: 'flex', alignItems: 'center', marginTop: '8px', position: 'relative' }}>
+                      <img
+                        src="/Domain.svg"
+                        alt="Shop"
+                        style={{ width: '40px', height: '40px' }}
+                      />
+                      <div style={{ position: 'relative', flex: 1, marginLeft: '8px' }}>
+                        <input
+                          type="text"
+                          name="shopUrl"
+                          value={miFormData.shopUrl}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '10px 40px 10px 10px',
+                            border: '1px solid #dfe3e8',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            background: '#f5f5f5',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              <Banner status="warning">
-                <p>
-                  Deleting your account will remove all your data permanently.
-                  <Button
-                    plain
-                    destructive
-                    onClick={() => setMiShowDeleteModal(true)}
-                    style={{ marginLeft: '8px' }}
-                  >
-                    Delete Account
-                  </Button>
-                </p>
-              </Banner>
-            </div>
-          </Form>
-        </Card>
+                {miFormChanged && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                    <Button onClick={miHandleDiscard}>Discard</Button>
+                    <Button
+                      primary
+                      submit
+                      loading={miNavigation.state === 'submitting'}
+                      disabled={miNavigation.state === 'submitting'}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
+
+                <div style={{ marginTop: '20px' }}>
+                  <Banner status="info">
+                    <p>
+                      Deleting your account will remove all your data permanently.
+                      <Button
+                        plain
+                        destructive
+                        onClick={() => miSetShowDeleteModal(true)}
+                        style={{ marginLeft: '8px' }}
+                      >
+                        Delete Account
+                      </Button>
+                    </p>
+                  </Banner>
+                </div>
+              </Form>
+            </Card>
+          </Layout.Section>
+        </Layout>
       </Page>
     </Frame>
   );

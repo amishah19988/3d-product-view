@@ -1,14 +1,33 @@
 import { json } from '@remix-run/node';
 import { useLoaderData, Form, useSubmit, useActionData, useNavigation, useFetcher } from '@remix-run/react';
-import { Frame, Page, Card, ResourceList, Thumbnail, Text, Button, Toast, Collapsible, Loading, TextField, FormLayout } from '@shopify/polaris';
+import { Frame, Page, Card, ResourceList, Thumbnail, Text, Button, Toast, TextField, FormLayout, BlockStack, Layout, Spinner } from '@shopify/polaris';
 import { authenticate } from '../shopify.server';
 import prisma from '../db.server';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { promises as fs } from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
+import NavigationBar from './NavigationBar';
 
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
+const MiFullScreenLoader = () => (
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 2000,
+    }}
+  >
+    <Spinner accessibilityLabel="Loading" size="large" />
+  </div>
+);
 
 async function miEnsurePublicDir() {
   try {
@@ -447,18 +466,81 @@ const ThreeDProductViewerPage = () => {
     setMiShowToast(false);
   }, []);
 
+  const fieldContainerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '10px',
+    backgroundColor: 'rgb(246, 246, 247)',
+    borderRadius: '5px',
+    marginBottom: '10px',
+  };
+
+  const fieldLabelStyle = {
+    fontSize: '14px',
+    color: 'rgb(51, 51, 51)',
+    margin: '0px',
+  };
+
+  const fieldInputStyle = {
+    width: '100%',
+    padding: '10px',
+    border: '1px solid rgb(223, 227, 232)',
+    borderRadius: '4px',
+    fontSize: '14px',
+    background: 'white',
+  };
+
+  const sectionHeaderStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px',
+    cursor: 'pointer',
+    backgroundColor: '#f4f6f8',
+    borderRadius: '4px',
+    marginBottom: '10px',
+    borderTop: '2px solid #000000',
+  };
+
+  const iconStyle = {
+    width: '30px',
+    height: '30px',
+    paddingTop: '5px',
+  };
+
+  const saveButtonStyle = {
+    display: 'flex',
+    marginTop: '20px',
+  };
+
+  const buttonContentStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '5px',
+  };
+
   if (miLoaderData.error) {
     return (
       <Frame>
         <Page title="3D Product Viewer - 3D Models">
-          <Card>
-            <Text variant="headingMd" as="h2" tone="critical">
-              Error
-            </Text>
-            <Text as="p" tone="critical">
-              {miLoaderData.error}. Please try refreshing the page or contact support if the issue persists.
-            </Text>
-          </Card>
+          <BlockStack gap="500">
+            <Layout>
+              <Layout.Section>
+                <NavigationBar />
+                <Card>
+                  <Text variant="headingMd" as="h2" tone="critical">
+                    Error
+                  </Text>
+                  <Text as="p" tone="critical">
+                    {miLoaderData.error}. Please try refreshing the page or contact support if the issue persists.
+                  </Text>
+                </Card>
+              </Layout.Section>
+            </Layout>
+          </BlockStack>
         </Page>
       </Frame>
     );
@@ -468,61 +550,87 @@ const ThreeDProductViewerPage = () => {
     return (
       <Frame>
         <Page title="3D Product Viewer - 3D Models">
-          <Card>
-            <Text variant="headingMd" as="h2">
-              No Account Found
-            </Text>
-            <Text as="p" tone="subdued">
-              Please create an account to manage 3D Product Viewer models for this shop.
-            </Text>
-            <Form method="post" style={{ marginTop: '20px' }}>
-              <input type="hidden" name="actionType" value="createAccount" />
-              <FormLayout>
-                <TextField
-                  label="Username"
-                  name="username"
-                  value={miAccountForm.username}
-                  onChange={(value) => miHandleAccountChange('username', value)}
-                  autoComplete="off"
-                  placeholder="Enter username"
-                  required
-                  error={miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('username') ? miActionData.error : null}
-                />
-                <TextField
-                  label="Email"
-                  type="email"
-                  name="email"
-                  value={miAccountForm.email}
-                  onChange={(value) => miHandleAccountChange('email', value)}
-                  autoComplete="email"
-                  placeholder="Enter email"
-                  required
-                  error={
-                    (miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('email')) ? miActionData.error :
-                    miEmailError
-                  }
-                />
-                {miActionData?.error && miActionData.type === 'createAccount' && !miActionData.error.includes('username') && !miActionData.error.includes('email') && (
-                  <Text as="p" tone="critical">
-                    {miActionData.error}
+          <BlockStack gap="500">
+            <Layout>
+              <Layout.Section>
+                <NavigationBar />
+                <Card>
+                  <Text variant="headingMd" as="h2">
+                    No Account Found
                   </Text>
-                )}
-                <Button
-                  primary
-                  submit
-                  disabled={
-                    !miAccountForm.username ||
-                    !miAccountForm.email ||
-                    !!miEmailError ||
-                    miNavigation.state === 'submitting'
-                  }
-                  loading={miNavigation.state === 'submitting'}
-                >
-                  Create Account
-                </Button>
-              </FormLayout>
-            </Form>
-          </Card>
+                  <Text as="p" tone="subdued">
+                    Please create an account to manage 3D Product Viewer models for this shop.
+                  </Text>
+                  <Form method="post" style={{ marginTop: '20px' }}>
+                    <input type="hidden" name="actionType" value="createAccount" />
+                    <FormLayout>
+                      <div style={fieldContainerStyle}>
+                        <img src="/UsrAccount.svg" alt="Username Icon" style={{ width: '48px', height: '48px' }} />
+                        <div style={{ flex: '1 1 0%' }}>
+                          <p style={fieldLabelStyle}>Username</p>
+                          <TextField
+                            name="username"
+                            value={miAccountForm.username}
+                            onChange={(value) => miHandleAccountChange('username', value)}
+                            autoComplete="off"
+                            placeholder="Enter username"
+                            required
+                            style={fieldInputStyle}
+                            error={miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('username') ? miActionData.error : null}
+                          />
+                        </div>
+                      </div>
+                      <div style={fieldContainerStyle}>
+                        <img src="/Mail.svg" alt="Email Icon" style={{ width: '48px', height: '48px' }} />
+                        <div style={{ flex: '1 1 0%' }}>
+                          <p style={fieldLabelStyle}>Email</p>
+                          <TextField
+                            type="email"
+                            name="email"
+                            value={miAccountForm.email}
+                            onChange={(value) => miHandleAccountChange('email', value)}
+                            autoComplete="email"
+                            placeholder="Enter email"
+                            required
+                            error={
+                              (miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('email')) ? miActionData.error :
+                              miEmailError
+                            }
+                            style={fieldInputStyle}
+                          />
+                        </div>
+                      </div>
+                      {miActionData?.error && miActionData.type === 'createAccount' && !miActionData.error.includes('username') && !miActionData.error.includes('email') && (
+                        <Text as="p" tone="critical">
+                          {miActionData.error}
+                        </Text>
+                      )}
+                      <div style={saveButtonStyle}>
+                        <Button
+                          submit
+                          size="slim"
+                          variant='primary'
+                          disabled={
+                            !miAccountForm.username ||
+                            !miAccountForm.email ||
+                            !!miEmailError ||
+                            miNavigation.state === 'submitting'
+                          }
+                          loading={miNavigation.state === 'submitting'}
+                          style={{ backgroundColor: '#000000', color: '#FFFFFF' }}
+                        >
+                          <div style={buttonContentStyle}>
+                            <span>Create Account</span>
+                            <img src="/arrow-right.svg" alt="Arrow Right" style={{ width: '16px', height: '16px' }} />
+                          </div>
+                        </Button>
+                      </div>
+                    </FormLayout>
+                  </Form>
+                </Card>
+              </Layout.Section>
+            </Layout>
+          </BlockStack>
         </Page>
       </Frame>
     );
@@ -530,132 +638,160 @@ const ThreeDProductViewerPage = () => {
 
   return (
     <Frame>
+      {(miNavigation.state === 'submitting' || miNavigation.state === 'loading') && <MiFullScreenLoader />}
+      {miShowToast && (
+        <Toast
+          content={miToastMessage}
+          error={miToastError}
+          onDismiss={miToggleToast}
+        />
+      )}
       <Page title="3D Product Viewer - 3D Models">
-        {miNavigation.state === 'submitting' && <Loading />}
-        <Card>
-          <div style={{ marginBottom: '2rem' }}>
-            <TextField
-              label="Search Products"
-              value={miSearchQuery}
-              onChange={miHandleSearch}
-              placeholder="Search by product title..."
-              autoComplete="off"
-            />
-          </div>
-          <ResourceList
-            resourceName={{ singular: 'product', plural: 'products' }}
-            items={miProducts}
-            renderItem={(miProduct) => {
-              const miIsSelected = miSelectedProductId === miProduct.id;
-              const miThreeDModel = miThreeDModels.find((tdm) => tdm.productId === miProduct.id);
-              const miSavedFileName = miThreeDModel?.zipFile ? miThreeDModel.name : 'No file selected.';
-              const miDisplayFileName = miFileNames[miProduct.id] || miSavedFileName;
+        <BlockStack gap="500">
+          <Layout>
+            <Layout.Section>
+              <NavigationBar />
+              <Card>
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={fieldContainerStyle}>
+                    <img src="/search.svg" alt="Search Icon" style={{ width: '48px', height: '48px' }} />
+                    <div style={{ flex: '1 1 0%' }}>
+                      <p style={fieldLabelStyle}>Search Products</p>
+                      <TextField
+                        value={miSearchQuery}
+                        onChange={miHandleSearch}
+                        placeholder="Search by product title..."
+                        autoComplete="off"
+                        style={fieldInputStyle}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <ResourceList
+                  resourceName={{ singular: 'product', plural: 'products' }}
+                  items={miProducts}
+                  renderItem={(miProduct) => {
+                    const miIsSelected = miSelectedProductId === miProduct.id;
+                    const miThreeDModel = miThreeDModels.find((tdm) => tdm.productId === miProduct.id);
+                    const miSavedFileName = miThreeDModel?.zipFile ? miThreeDModel.name : 'No file selected.';
+                    const miDisplayFileName = miFileNames[miProduct.id] || miSavedFileName;
 
-              return (
-                <>
-                  <ResourceList.Item
-                    id={miProduct.id}
-                    media={<Thumbnail source={miProduct.featuredMedia?.image?.url || ''} alt={miProduct.title} />}
-                    onClick={() => setMiSelectedProductId(miIsSelected ? null : miProduct.id)}
-                  >
-                    <Text variant="bodyMd" fontWeight="bold" as="h3">
-                      {miProduct.title}
-                    </Text>
-                  </ResourceList.Item>
-                  <Collapsible open={miIsSelected} id={`collapsible-${miProduct.id}`}>
-                    <Card sectioned>
-                      <Text variant="headingLg" as="h2" style={{ marginBottom: '1rem' }}>
-                        3D Image Upload
-                      </Text>
-                      <br></br>
-                      <Form method="post" action="/app/chooseproducts" onSubmit={miHandleSubmit(miProduct.id)}>
-                        <input type="hidden" name="productId" value={miProduct.id} />
-
-                        <div style={{ marginBottom: '2rem' }}>
-                          <label htmlFor={`name-${miProduct.id}`}>Enter the Name:</label>
-                          <input
-                            type="text"
-                            id={`name-${miProduct.id}`}
-                            name="name"
-                            defaultValue={miThreeDModel?.name || ''}
-                            style={{ width: '100%', padding: '8px', marginTop: '4px' }}
-                          />
-                        </div>
-
-                        <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center' }}>
-                          <label htmlFor={`zipFile-${miProduct.id}`} style={{ marginRight: '10px' }}>
-                            Choose File:
-                          </label>
-                          <input
-                            type="file"
-                            id={`zipFile-${miProduct.id}`}
-                            name="zipFile"
-                            accept=".zip"
-                            onChange={miHandleFileUpload(miProduct.id)}
-                            style={{ display: 'inline-block', marginRight: '10px' }}
-                          />
-                          <span style={{ marginRight: '20px' }}>{miDisplayFileName}</span>
-                          {miThreeDModel?.zipFile && !miFileNames[miProduct.id] && (
-                            <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+                    return (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <ResourceList.Item
+                          id={miProduct.id}
+                          media={<Thumbnail source={miProduct.featuredMedia?.image?.url || ''} alt={miProduct.title} />}
+                          onClick={() => setMiSelectedProductId(miIsSelected ? null : miProduct.id)}
+                        >
+                          <Text variant="bodyMd" fontWeight="bold" as="h3">
+                            {miProduct.title}
+                          </Text>
+                        </ResourceList.Item>
+                        {miIsSelected && (
+                          <div style={{ padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px', marginTop: '0.5rem' }}>
+                            <div style={sectionHeaderStyle}>
+                              <Text variant="headingSm" as="h3">3D Image Upload</Text>
                               <Button
-                                onClick={miHandlePreview(miProduct.id)}
+                                onClick={() => setMiSelectedProductId(null)}
+                                variant="tertiary"
                                 size="slim"
+                                style={{ backgroundColor: '#f4f6f8', border: 'none', padding: '8px' }}
                               >
-                                Preview
-                              </Button>
-                              <Button
-                                onClick={miHandleDelete(miProduct.id)}
-                                destructive
-                                size="slim"
-                              >
-                                Delete
+                                <img src="/cancel.svg" alt="Minimize" style={iconStyle} />
                               </Button>
                             </div>
-                          )}
-                        </div>
-
-                        <div style={{ marginBottom: '1rem', color: '#6d7175', fontSize: '12px' }}>
-                          Please upload a .zip file containing .glTF (.gltf) or .GLB (.glb) files.
-                        </div>
-
-                        <Button
-                          submit
-                          primary
-                          loading={miNavigation.state === 'submitting'}
-                          disabled={miNavigation.state === 'submitting'}
-                        >
-                          {miNavigation.state === 'submitting' ? 'Saving...' : 'Save 3D Model'}
-                        </Button>
-                      </Form>
-                    </Card>
-                  </Collapsible>
-                </>
-              );
-            }}
-          />
-          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between' }}>
-            <Button
-              onClick={() => miHandlePageChange('previous')}
-              disabled={!miPageInfo.hasPreviousPage}
-            >
-              Previous
-            </Button>
-            <Button
-              onClick={() => miHandlePageChange('next')}
-              disabled={!miPageInfo.hasNextPage}
-            >
-              Next
-            </Button>
-          </div>
-        </Card>
-
-        {miShowToast && (
-          <Toast
-            content={miToastMessage}
-            error={miToastError}
-            onDismiss={miToggleToast}
-          />
-        )}
+                            <Form method="post" action="/app/chooseproducts" onSubmit={miHandleSubmit(miProduct.id)}>
+                              <input type="hidden" name="productId" value={miProduct.id} />
+                              <div style={fieldContainerStyle}>
+                                <div style={{ flex: '1 1 0%' }}>
+                                  <p style={fieldLabelStyle}>Enter the Name</p>
+                                  <TextField
+                                    name="name"
+                                    defaultValue={miThreeDModel?.name || ''}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                              </div>
+                              <div style={fieldContainerStyle}>
+                                <div style={{ flex: '1 1 0%', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ flex: '1' }}>
+                                    <p style={fieldLabelStyle}>Upload 3D Image</p>
+                                    <input
+                                      type="file"
+                                      id={`zipFile-${miProduct.id}`}
+                                      name="zipFile"
+                                      accept=".zip"
+                                      onChange={miHandleFileUpload(miProduct.id)}
+                                      style={{ width: '100%', padding: '8px', border: '1px solid rgb(223, 227, 232)', borderRadius: '4px' }}
+                                    />
+                                  </div>
+                                  <Text as="span">{miDisplayFileName}</Text>
+                                  {miThreeDModel?.zipFile && !miFileNames[miProduct.id] && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                      <Button
+                                        onClick={miHandlePreview(miProduct.id)}
+                                        size="slim"
+                                        variant="primary"
+                                      >
+                                        Preview
+                                      </Button>
+                                      <Button
+                                        onClick={miHandleDelete(miProduct.id)}
+                                        size="slim"
+                                        variant="primary"
+                                        tone="critical"
+                                      >
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ marginBottom: '10px', color: '#6d7175', fontSize: '12px' }}>
+                                Please upload a .zip file containing .glTF (.gltf) or .GLB (.glb) files.
+                              </div>
+                              <div style={{ ...saveButtonStyle, marginTop: '10px' }}>
+                                <Button
+                                  submit
+                                  variant="primary"
+                                  size="slim"
+                                  loading={miNavigation.state === 'submitting'}
+                                  disabled={miNavigation.state === 'submitting'}
+                                  style={{ backgroundColor: '#000000', color: '#FFFFFF' }}
+                                >
+                                  <div style={buttonContentStyle}>
+                                    <span>{miNavigation.state === 'submitting' ? 'Saving...' : 'Save 3D Model'}</span>
+                                    <img src="/arrow-right.svg" alt="Arrow Right" style={{ width: '16px', height: '16px' }} />
+                                  </div>
+                                </Button>
+                              </div>
+                            </Form>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+                <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between' }}>
+                  <Button
+                    onClick={() => miHandlePageChange('previous')}
+                    disabled={!miPageInfo.hasPreviousPage}
+                    style={{ backgroundColor: '#000000', color: '#FFFFFF' }}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={() => miHandlePageChange('next')}
+                    disabled={!miPageInfo.hasNextPage}
+                    style={{ backgroundColor: '#000000', color: '#FFFFFF' }}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </Card>
+            </Layout.Section>
+          </Layout>
+        </BlockStack>
       </Page>
     </Frame>
   );

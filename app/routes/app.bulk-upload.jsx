@@ -1,14 +1,111 @@
 import { json } from '@remix-run/node';
 import { Form, useActionData, useNavigation, useLoaderData } from '@remix-run/react';
-import { Frame, Page, Card, Text, Button, Toast, Loading, FormLayout, Tabs, TextField } from '@shopify/polaris';
+import { Frame, Page, Card, Text, Button, Toast, FormLayout, Tabs, TextField, BlockStack, Layout, Spinner, InlineStack } from '@shopify/polaris';
 import { authenticate } from '../shopify.server';
 import prisma from '../db.server';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { promises as fs } from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
+import NavigationBar from './NavigationBar';
 
 const miPUBLIC_DIR = path.join(process.cwd(), 'public');
+const MiFullScreenLoader = () => (
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 2000,
+    }}
+  >
+    <Spinner accessibilityLabel="Loading SOLID" size="large" />
+  </div>
+);
+
+const CustomFileInput = ({ id, name, accept, multiple, fileInputRef, onChange }) => {
+  const [fileNames, setFileNames] = useState([]);
+
+  const handleFileChange = (event) => {
+    const files = Array.from(event.target.files);
+    setFileNames(files.map(file => file.name));
+    if (onChange) onChange(event);
+  };
+
+  const handleClear = () => {
+    setFileNames([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <InlineStack gap="200" align="start" blockAlign="center">
+      <div style={{ position: 'relative' }}>
+        <input
+          type="file"
+          id={id}
+          name={name}
+          accept={accept}
+          multiple={multiple}
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{
+            opacity: 0,
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            cursor: 'pointer',
+          }}
+        />
+        <button
+          type="button"
+          style={{
+            backgroundColor: '#F1F1F1',
+            border: '1px solid #D3D3D3',
+            borderRadius: '15px',
+            padding: '8px 16px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            color: '#000000',
+          }}
+        >
+          Choose File
+        </button>
+      </div>
+      <Text as="span" variant="bodyMd">
+        {fileNames.length > 0 ? fileNames.join(', ') : 'No File Chosen'}
+      </Text>
+      {fileNames.length > 0 && (
+        <button
+          type="button"
+          onClick={handleClear}
+          style={{
+            backgroundColor: '#E0E0E0',
+            border: '1px solid #D3D3D3',
+            borderRadius: '50%',
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: '14px',
+            color: '#6D7175',
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </InlineStack>
+  );
+};
 
 async function miensurePublicDir() {
   try {
@@ -386,8 +483,8 @@ const miBulkUploadPage = () => {
 
   const [miSelectedTab, miSetSelectedTab] = useState(0);
   const miTabs = [
-    { id: 'csv-upload', content: 'Upload CSV File' },
-    { id: 'zip-upload', content: 'Upload Zip Files' },
+    { id: 'csv-upload', content: 'Upload CSV File', icon: '/csvicon.svg' },
+    { id: 'zip-upload', content: 'Upload ZIP File', icon: '/zipicon.svg' },
   ];
 
   const miValidateEmail = (email) => {
@@ -458,18 +555,106 @@ const miBulkUploadPage = () => {
     />
   ) : null;
 
+  const miCustomTabStyles = {
+    tabList: {
+      display: 'flex',
+      listStyle: 'none',
+      padding: 0,
+      margin: 0,
+    },
+    tab: (isSelected) => ({
+      backgroundColor: isSelected ? '#77A321' : '#000000',
+      color: '#FFFFFF',
+      padding: '10px 20px',
+      cursor: 'pointer',
+      border: 'none',
+      borderRadius: '4px 4px 0 0',
+      marginRight: '10px',
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    tabIcon: {
+      width: '20px',
+      height: '20px',
+      marginRight: '8px',
+    },
+    button: {
+      backgroundColor: '#000000',
+      color: '#FFFFFF',
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '15px',
+      cursor: 'pointer',
+      fontWeight: 'bold',
+    },
+    label: {
+      fontWeight: 'normal',
+      marginBottom: '8px',
+    },
+    subduedText: {
+      fontSize: '14px',
+      color: '#6D7175',
+    },
+  };
+
+  const fieldContainerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '10px',
+    backgroundColor: 'rgb(246, 246, 247)',
+    borderRadius: '5px',
+    marginBottom: '10px',
+  };
+
+  const fieldLabelStyle = {
+    fontSize: '14px',
+    color: 'rgb(51, 51, 51)',
+    margin: '0px',
+  };
+
+  const fieldInputStyle = {
+    width: '100%',
+    padding: '10px',
+    border: '1px solid rgb(223, 227, 232)',
+    borderRadius: '4px',
+    fontSize: '14px',
+    background: 'white',
+  };
+
+   const saveButtonStyle = {
+    display: 'flex',
+    marginTop: '20px',
+  };
+   const buttonContentStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '5px',
+  };
+
   if (miLoaderData.error) {
     return (
       <Frame>
         <Page title="Bulk Upload 3D Models">
-          <Card>
-            <Text variant="headingMd" as="h2" tone="critical">
-              Error
-            </Text>
-            <Text as="p" tone="critical">
-              {miLoaderData.error}. Please try refreshing the page or contact support if the issue persists.
-            </Text>
-          </Card>
+          <BlockStack gap="500">
+            <Layout>
+              <Layout.Section>
+                <NavigationBar />
+                <Card>
+                  <Text variant="headingMd" as="h2" tone="critical">
+                    Error
+                  </Text>
+                  <Text as="p" tone="critical">
+                    {miLoaderData.error}. Please try refreshing the page or contact support if the issue persists.
+                  </Text>
+                </Card>
+              </Layout.Section>
+            </Layout>
+          </BlockStack>
         </Page>
       </Frame>
     );
@@ -478,62 +663,88 @@ const miBulkUploadPage = () => {
   if (!miLoaderData.serialkey) {
     return (
       <Frame>
-        <Page title="Bulk Upload 3D Models">
-          <Card>
-            <Text variant="headingMd" as="h2">
-              No Account Found
-            </Text>
-            <Text as="p" tone="subdued">
-              Please create an account to upload 3D models for this shop.
-            </Text>
-            <Form method="post" style={{ marginTop: '20px' }}>
-              <input type="hidden" name="actionType" value="createAccount" />
-              <FormLayout>
-                <TextField
-                  label="Username"
-                  name="username"
-                  value={miAccountForm.username}
-                  onChange={(value) => miHandleAccountChange('username', value)}
-                  autoComplete="off"
-                  placeholder="Enter username"
-                  required
-                  error={miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('username') ? miActionData.error : null}
-                />
-                <TextField
-                  label="Email"
-                  type="email"
-                  name="email"
-                  value={miAccountForm.email}
-                  onChange={(value) => miHandleAccountChange('email', value)}
-                  autoComplete="email"
-                  placeholder="Enter email"
-                  required
-                  error={
-                    (miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('email')) ? miActionData.error :
-                    miEmailError
-                  }
-                />
-                {miActionData?.error && miActionData.type === 'createAccount' && !miActionData.error.includes('username') && !miActionData.error.includes('email') && (
-                  <Text as="p" tone="critical">
-                    {miActionData.error}
+        <Page title="3D Product Viewer - 3D Models">
+          <BlockStack gap="500">
+            <Layout>
+              <Layout.Section>
+                <NavigationBar />
+                <Card>
+                  <Text variant="headingMd" as="h2">
+                    No Account Found
                   </Text>
-                )}
-                <Button
-                  primary
-                  submit
-                  disabled={
-                    !miAccountForm.username ||
-                    !miAccountForm.email ||
-                    !!miEmailError ||
-                    miNavigation.state === 'submitting'
-                  }
-                  loading={miNavigation.state === 'submitting'}
-                >
-                  Create Account
-                </Button>
-              </FormLayout>
-            </Form>
-          </Card>
+                  <Text as="p" tone="subdued">
+                    Please create an account to manage 3D Product Viewer models for this shop.
+                  </Text>
+                  <Form method="post" style={{ marginTop: '20px' }}>
+                    <input type="hidden" name="actionType" value="createAccount" />
+                    <FormLayout>
+                      <div style={fieldContainerStyle}>
+                        <img src="/UsrAccount.svg" alt="Username Icon" style={{ width: '48px', height: '48px' }} />
+                        <div style={{ flex: '1 1 0%' }}>
+                          <p style={fieldLabelStyle}>Username</p>
+                          <TextField
+                            name="username"
+                            value={miAccountForm.username}
+                            onChange={(value) => miHandleAccountChange('username', value)}
+                            autoComplete="off"
+                            placeholder="Enter username"
+                            required
+                            style={fieldInputStyle}
+                            error={miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('username') ? miActionData.error : null}
+                          />
+                        </div>
+                      </div>
+                      <div style={fieldContainerStyle}>
+                        <img src="/Mail.svg" alt="Email Icon" style={{ width: '48px', height: '48px' }} />
+                        <div style={{ flex: '1 1 0%' }}>
+                          <p style={fieldLabelStyle}>Email</p>
+                          <TextField
+                            type="email"
+                            name="email"
+                            value={miAccountForm.email}
+                            onChange={(value) => miHandleAccountChange('email', value)}
+                            autoComplete="email"
+                            placeholder="Enter email"
+                            required
+                            error={
+                              (miActionData?.error && miActionData.type === 'createAccount' && miActionData.error.includes('email')) ? miActionData.error :
+                              miEmailError
+                            }
+                            style={fieldInputStyle}
+                          />
+                        </div>
+                      </div>
+                      {miActionData?.error && miActionData.type === 'createAccount' && !miActionData.error.includes('username') && !miActionData.error.includes('email') && (
+                        <Text as="p" tone="critical">
+                          {miActionData.error}
+                        </Text>
+                      )}
+                      <div style={saveButtonStyle}>
+                        <Button
+                          submit
+                          size="slim"
+                          variant='primary'
+                          disabled={
+                            !miAccountForm.username ||
+                            !miAccountForm.email ||
+                            !!miEmailError ||
+                            miNavigation.state === 'submitting'
+                          }
+                          loading={miNavigation.state === 'submitting'}
+                          style={{ backgroundColor: '#000000', color: '#FFFFFF' }}
+                        >
+                          <div style={buttonContentStyle}>
+                            <span>Create Account</span>
+                            <img src="/arrow-right.svg" alt="Arrow Right" style={{ width: '16px', height: '16px' }} />
+                          </div>
+                        </Button>
+                      </div>
+                    </FormLayout>
+                  </Form>
+                </Card>
+              </Layout.Section>
+            </Layout>
+          </BlockStack>
         </Page>
       </Frame>
     );
@@ -541,116 +752,137 @@ const miBulkUploadPage = () => {
 
   return (
     <Frame>
-      {miNavigation.state === 'submitting' && <Loading />}
+      {(miNavigation.state === 'submitting' || miNavigation.state === 'loading') && <MiFullScreenLoader />}
       {miToastMarkup}
       <Page title="Bulk Upload 3D Models">
-        <Card>
-          <Tabs tabs={miTabs} selected={miSelectedTab} onSelect={miHandleTabChange}>
-            {miSelectedTab === 0 ? (
-              <div style={{ paddingTop: '20px' }}>
-                <Text variant="headingMd" as="h2">
-                  Upload CSV File
-                </Text>
-                <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-                  <a
-                    href="/download-sample-csv"
-                    style={{ color: '#0066cc', textDecoration: 'underline' }}
-                  >
-                    Download Sample CSV
-                  </a>
+        <BlockStack gap="500">
+          <Layout>
+            <Layout.Section>
+              <NavigationBar />
+              <Card>
+                <div role="tablist" style={miCustomTabStyles.tabList}>
+                  {miTabs.map((tab, index) => (
+                    <button
+                      key={tab.id}
+                      role="tab"
+                      aria-selected={miSelectedTab === index}
+                      onClick={() => miHandleTabChange(index)}
+                      style={miCustomTabStyles.tab(miSelectedTab === index)}
+                    >
+                      <img
+                        src={tab.icon}
+                        alt={`${tab.content} icon`}
+                        style={miCustomTabStyles.tabIcon}
+                      />
+                      {tab.content}
+                    </button>
+                  ))}
                 </div>
-                <Form method="post" encType="multipart/form-data" ref={miCsvFormRef}>
-                  <input type="hidden" name="actionType" value="csvUpload" />
-                  <FormLayout>
-                    <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
-                      <label htmlFor="csvFile" style={{ marginRight: '10px' }}>
-                        Upload file here <span style={{ color: 'red' }}>*</span>
-                      </label>
-                      <input
-                        type="file"
-                        id="csvFile"
-                        name="csvFile"
-                        accept=".csv"
-                        style={{ display: 'inline-block', marginRight: '10px' }}
-                        ref={miCsvFileInputRef}
-                      />
-                    </div>
-                    <Text as="p" tone="subdued">
-                      Upload a CSV file with relative paths to ZIP files in the <code>path</code> column (e.g., <code>public/filename.zip</code> for files uploaded via the ZIP upload tab).
+                {miSelectedTab === 0 ? (
+                  <div style={{ paddingTop: '20px' }}>
+                    <Text variant="headingMd" as="h2">
+                      Upload CSV File
                     </Text>
-                    <div style={{ marginTop: '20px' }}>
-                      <Button
-                        primary
-                        submit
-                        loading={miNavigation.state === 'submitting' && miActionData?.type !== 'zipUpload'}
-                        disabled={miNavigation.state === 'submitting'}
+                    <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+                      <a
+                        href="/download-sample-csv"
+                        style={{ color: '#0066cc', textDecoration: 'underline' }}
                       >
-                        {miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload' ? 'Processing...' : 'Save'}
-                      </Button>
+                        Download sample CSV
+                      </a>
                     </div>
-                  </FormLayout>
-                </Form>
-              </div>
-            ) : (
-              <div style={{ paddingTop: '20px' }}>
-                <Text variant="headingMd" as="h2">
-                  Upload Zip Files
-                </Text>
-                <Form method="post" encType="multipart/form-data" ref={miZipFormRef}>
-                  <input type="hidden" name="actionType" value="zipUpload" />
-                  <FormLayout>
-                    <div style={{ marginTop: '20px' }}>
-                      <label htmlFor="zipFile">
-                        Upload zip files here <span style={{ color: 'red' }}>*</span>
-                      </label>
-                      <input
-                        type="file"
-                        id="zipFile"
-                        name="zipFile"
-                        accept=".zip"
-                        multiple
-                        style={{ display: 'block', marginTop: '8px' }}
-                        ref={miZipFileInputRef}
-                      />
-                    </div>
-                    <Text as="p" tone="subdued" style={{ marginTop: '8px' }}>
-                      Upload one or more zip files containing 3D model files (.gltf or .glb).
+                    <Form method="post" encType="multipart/form-data" ref={miCsvFormRef}>
+                      <input type="hidden" name="actionType" value="csvUpload" />
+                      <FormLayout>
+                        <div>
+                          <label htmlFor="csvFile" style={miCustomTabStyles.label}>
+                            Upload file here
+                          </label><br></br>
+                          <CustomFileInput
+                            id="csvFile"
+                            name="csvFile"
+                            accept=".csv"
+                            fileInputRef={miCsvFileInputRef}
+                          />
+                        </div>
+                        <Text as="p" style={miCustomTabStyles.subduedText}>
+                          upload a CSV with relative paths to ZIP files in the path column (e.g., public/filename.zip for files uploaded via the ZIP upload tab).
+                        </Text>
+                        <div>
+                          <Button
+                            variant="primary"
+                            submit
+                            style={miCustomTabStyles.button}
+                            loading={miNavigation.state === 'submitting' && miActionData?.type !== 'zipUpload'}
+                            disabled={miNavigation.state === 'submitting'}
+                          >
+                            {miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload' ? 'Processing...' : 'Upload'}
+                          </Button>
+                        </div>
+                      </FormLayout>
+                    </Form>
+                  </div>
+                ) : (
+                  <div style={{ paddingTop: '20px' }}>
+                    <Text variant="headingMd" as="h2">
+                      Upload ZIP File
                     </Text>
-                    <div style={{ marginTop: '20px' }}>
-                      <Button
-                        primary
-                        submit
-                        loading={miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload'}
-                        disabled={miNavigation.state === 'submitting'}
-                      >
-                        {miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload' ? 'Uploading...' : 'Upload'}
-                      </Button>
-                    </div>
-                  </FormLayout>
-                </Form>
-                {miUploadedZipFilePaths.length > 0 && (
-                  <div style={{ marginTop: '20px' }}>
-                    <Text variant="bodyMd" as="p">
-                      Uploaded files saved at:
-                    </Text>
-                    <ul>
-                      {miUploadedZipFilePaths.map((miFilePath, miIndex) => (
-                        <li key={miIndex}>
-                          <Text variant="bodyMd" as="p">
-                            <code>{miFilePath}</code>
-                          </Text>
-                        </li>
-                      ))}
-                    </ul>
-                    <Text variant="bodyMd" as="p" tone="subdued">
-                      These files are stored on the server. You can access them in the <code>public/</code> directory.
-                    </Text>
+                    <Form method="post" encType="multipart/form-data" ref={miZipFormRef}>
+                      <input type="hidden" name="actionType" value="zipUpload" />
+                      <FormLayout>
+                        <div style={{ marginTop: '20px' }}>
+                          <label htmlFor="zipFile" style={miCustomTabStyles.label}>
+                            Upload file here
+                          </label>
+                          <CustomFileInput
+                            id="zipFile"
+                            name="zipFile"
+                            accept=".zip"
+                            multiple
+                            fileInputRef={miZipFileInputRef}
+                          />
+                        </div>
+                        <Text as="p" style={miCustomTabStyles.subduedText}>
+                          Upload one or more ZIP files containing 3D model files (.gltf or .glb).
+                        </Text>
+                        <div style={{ marginTop: '10px' }}>
+                          <Button
+                            submit
+                            variant="primary"
+                            style={miCustomTabStyles.button}
+                            loading={miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload'}
+                            disabled={miNavigation.state === 'submitting'}
+                          >
+                            {miNavigation.state === 'submitting' && miActionData?.type !== 'csvUpload' ? 'Uploading...' : 'Upload'}
+                          </Button>
+                        </div>
+                      </FormLayout>
+                    </Form>
+                    {miUploadedZipFilePaths.length > 0 && (
+                      <div style={{ marginTop: '10px' }}>
+                        <Text variant="bodyMd" as="p">
+                          Uploaded files saved at:
+                        </Text>
+                        <ul>
+                          {miUploadedZipFilePaths.map((miFilePath, miIndex) => (
+                            <li key={miIndex}>
+                              <Text variant="bodyMd" as="p">
+                                <code>{miFilePath}</code>
+                              </Text>
+                            </li>
+                          ))}
+                        </ul>
+                        <Text variant="bodyMd" as="p" style={miCustomTabStyles.subduedText}>
+                          These files are stored on the server. You can access them in the public/ directory.
+                        </Text>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </Tabs>
-        </Card>
+              </Card>
+            </Layout.Section>
+          </Layout>
+        </BlockStack>
       </Page>
     </Frame>
   );
