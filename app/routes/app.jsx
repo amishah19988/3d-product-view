@@ -22,7 +22,6 @@ export default function App() {
               <Link to="/app" rel="home">
                 Home
               </Link>
-               <Link to="/app/3dproductview-config-settings">3D Viewer Settings</Link> 
             </NavMenu>
       <Outlet />
     </AppProvider>
