@@ -178,6 +178,7 @@ export async function action({ request }) {
   try {
     const { session } = await authenticate.admin(request);
     const shop = normalizeShopDomain(session.shop);
+    console.log('Normalized session shop:', shop);
 
     const formData = await request.formData();
     const actionType = formData.get('actionType');
@@ -289,8 +290,8 @@ export async function action({ request }) {
 
       for (const record of records) {
         let { productId, shop: recordShop, name, path: zipPath } = record;
-
         const normalizedRecordShop = normalizeShopDomain(recordShop);
+        console.log('CSV shop:', recordShop, 'Normalized:', normalizedRecordShop);
 
         if (!productId || !normalizedRecordShop || !name || !zipPath) {
           return json(
@@ -299,9 +300,9 @@ export async function action({ request }) {
           );
         }
 
-        if (recordShop !== shop) {
+        if (normalizedRecordShop !== shop) {
           return json(
-            { success: false, error: `Shop in CSV (${recordShop}) does not match the current shop (${shop}).`, type: 'csvUpload' },
+            { success: false, error: `Shop in CSV (${recordShop}) does not match the current shop (${session.shop}).`, type: 'csvUpload' },
             { status: 400 }
           );
         }
@@ -323,7 +324,7 @@ export async function action({ request }) {
             await fs.access(fullZipPath);
           } catch (error) {
             return json(
-              { success: false, error: `Zip file not found at path: ${zipPath} Please upload zip file first `, type: 'csvUpload' },
+              { success: false, error: `Zip file not found at path: ${zipPath} Please upload zip file first`, type: 'csvUpload' },
               { status: 400 }
             );
           }
@@ -365,7 +366,7 @@ export async function action({ request }) {
           where: {
             productId_shop: {
               productId,
-              shop: recordShop,
+              shop: normalizedRecordShop,
             },
           },
           update: {
@@ -374,7 +375,7 @@ export async function action({ request }) {
           },
           create: {
             productId,
-            shop: recordShop,
+            shop: normalizedRecordShop,
             name,
             zipFile: gltfFilePath,
             createdAt: new Date().toISOString(),
@@ -436,7 +437,6 @@ export async function action({ request }) {
             });
             continue;
           } catch (error) {
-    
           }
 
           await fs.writeFile(filePath, fileBuffer);
@@ -509,7 +509,7 @@ const miBulkUploadPage = () => {
     return '';
   };
 
-  const miHandleAccountChange = (field, value) => {
+  const handleAccountChange = (field, value) => {
     miSetAccountForm(prev => ({
       ...prev,
       [field]: value,
@@ -545,13 +545,13 @@ const miBulkUploadPage = () => {
           window.location.reload();
         }
       } else if (miActionData.error || miActionData.results?.some(result => !result.success)) {
-        const miErrorMessage = miActionData.results
+        const errorMessage = miActionData.results
           ? miActionData.results
               .filter(result => !result.success)
               .map(result => `${result.fileName}: ${result.error}`)
               .join('; ')
           : miActionData.error;
-        miSetToastMessage(miErrorMessage || miActionData.message);
+        miSetToastMessage(errorMessage || miActionData.message);
         miSetToastError(true);
         miSetShowToast(true);
       }
@@ -635,11 +635,11 @@ const miBulkUploadPage = () => {
     background: 'white',
   };
 
-   const saveButtonStyle = {
+  const saveButtonStyle = {
     display: 'flex',
     marginTop: '20px',
   };
-   const buttonContentStyle = {
+  const buttonContentStyle = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -696,7 +696,7 @@ const miBulkUploadPage = () => {
                           <TextField
                             name="username"
                             value={miAccountForm.username}
-                            onChange={(value) => miHandleAccountChange('username', value)}
+                            onChange={(value) => handleAccountChange('username', value)}
                             autoComplete="off"
                             placeholder="Enter username"
                             required
@@ -713,7 +713,7 @@ const miBulkUploadPage = () => {
                             type="email"
                             name="email"
                             value={miAccountForm.email}
-                            onChange={(value) => miHandleAccountChange('email', value)}
+                            onChange={(value) => handleAccountChange('email', value)}
                             autoComplete="email"
                             placeholder="Enter email"
                             required
@@ -808,7 +808,7 @@ const miBulkUploadPage = () => {
                         <div>
                           <label htmlFor="csvFile" style={miCustomTabStyles.label}>
                             Upload file here
-                          </label><br></br>
+                          </label><br />
                           <CustomFileInput
                             id="csvFile"
                             name="csvFile"
@@ -817,7 +817,7 @@ const miBulkUploadPage = () => {
                           />
                         </div>
                         <Text as="p" style={miCustomTabStyles.subduedText}>
-                          upload a CSV with relative paths to ZIP files in the path column (e.g., public/filename.zip for files uploaded via the ZIP upload tab).
+                          Upload a CSV with relative paths to ZIP files in the path column (e.g., public/filename.zip for files uploaded via the ZIP upload tab). Ensure the shop column contains the domain without https:// or trailing slashes (e.g., 3d-product-view.myshopify.com).
                         </Text>
                         <div>
                           <Button
