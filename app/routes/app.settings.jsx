@@ -61,18 +61,8 @@ export const action = async ({ request }) => {
         }, { status: 404 });
       }
 
-      await prisma.$transaction(async (tx) => {
-        await tx.AgeVerificationRules.deleteMany({
-          where: { shop },
-        });
-
-        await tx.AgeVerificationSettings.deleteMany({
-          where: { shop },
-        });
-
-        await tx.account.delete({
-          where: { id: account.id },
-        });
+      await prisma.account.delete({
+        where: { id: account.id },
       });
 
       return json({
@@ -117,13 +107,13 @@ export const action = async ({ request }) => {
 
     return json({ success: true, message: 'Account updated successfully' }, { status: 200 });
   } catch (error) {
+    console.error('Action error:', error);
     return json({
       success: false,
       error: `Operation failed: ${error.message}`,
     }, { status: 500 });
   }
 };
-
 const AccountSettings = () => {
   const miLoaderData = useLoaderData() || {};
   const { account, shop, error } = miLoaderData;
