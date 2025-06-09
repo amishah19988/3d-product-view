@@ -323,7 +323,7 @@ export async function action({ request }) {
             await fs.access(fullZipPath);
           } catch (error) {
             return json(
-              { success: false, error: `Zip file not found at path: ${zipPath}`, type: 'csvUpload' },
+              { success: false, error: `Zip file not found at path: ${zipPath} Please upload zip file first `, type: 'csvUpload' },
               { status: 400 }
             );
           }
