@@ -166,10 +166,18 @@ export async function loader({ request }) {
   }
 }
 
+function normalizeShopDomain(domain) {
+  if (!domain) return domain;
+  return domain
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '')
+    .toLowerCase();
+}
+
 export async function action({ request }) {
   try {
     const { session } = await authenticate.admin(request);
-    const shop = session.shop;
+    const shop = normalizeShopDomain(session.shop);
 
     const formData = await request.formData();
     const actionType = formData.get('actionType');
@@ -268,7 +276,8 @@ export async function action({ request }) {
       const productIdShopPairs = new Set();
       for (const record of records) {
         const { productId, shop: recordShop } = record;
-        const pairKey = `${productId}:${recordShop}`;
+        const normalizedRecordShop = normalizeShopDomain(recordShop);
+        const pairKey = `${productId}:${normalizedRecordShop}`;
         if (productIdShopPairs.has(pairKey)) {
           return json(
             { success: false, error: `Duplicate productId and shop combination found: productId=${productId}, shop=${recordShop}`, type: 'csvUpload' },
@@ -281,7 +290,9 @@ export async function action({ request }) {
       for (const record of records) {
         let { productId, shop: recordShop, name, path: zipPath } = record;
 
-        if (!productId || !recordShop || !name || !zipPath) {
+        const normalizedRecordShop = normalizeShopDomain(recordShop);
+
+        if (!productId || !normalizedRecordShop || !name || !zipPath) {
           return json(
             { success: false, error: `Missing required fields in row: productId=${productId}, shop=${recordShop}, name=${name}, path=${zipPath}`, type: 'csvUpload' },
             { status: 400 }
