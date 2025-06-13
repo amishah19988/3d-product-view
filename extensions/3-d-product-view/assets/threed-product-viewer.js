@@ -451,6 +451,21 @@ function miRenderModelViewer(settings, model, miProductId) {
   miFullScreenLink.style.zIndex = "10";
   miMediaContainer.appendChild(miFullScreenLink);
 
+  // Add 360 icon in bottom left
+  const miIconImg = document.createElement("img");
+  miIconImg.id = "threed-icon";
+  miIconImg.src = window.threedIcon;
+  miIconImg.alt = "360 View Icon";
+  miIconImg.style.display = "block";
+  miIconImg.style.width = "40px";
+  miIconImg.style.height = "40px";
+  miIconImg.style.position = "absolute";
+  miIconImg.style.bottom = "10px";
+  miIconImg.style.left = "10px";
+  miIconImg.style.zIndex = "10";
+  miIconImg.style.cursor = "default";
+  miMediaContainer.appendChild(miIconImg);
+
   miMediaContainer.appendChild(miMediaDiv);
   miListItem.appendChild(miMediaContainer);
   miGallery.appendChild(miListItem);
@@ -466,7 +481,7 @@ function miRenderModelViewer(settings, model, miProductId) {
 
   const miStopPropagation = (miEvent) => {
     const miTarget = miEvent.target;
-    if (miTarget.closest('.controls') || miTarget.closest('a#full-screen')) {
+    if (miTarget.closest('.controls') || miTarget.closest('a#full-screen') || miTarget.closest('img#threed-icon')) {
       miEvent.stopPropagation();
       if (miTarget.tagName.toLowerCase() === 'input' || miTarget.tagName.toLowerCase() === 'button') {
         return;
@@ -503,6 +518,16 @@ function miRenderModelViewer(settings, model, miProductId) {
       right: 0;
       z-index: 10;
       cursor: pointer;
+    }
+    #threed-icon {
+      display: block;
+      width: 40px;
+      height: 40px;
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 10;
+      cursor: default;
     }
     .controls {
       position: absolute;
