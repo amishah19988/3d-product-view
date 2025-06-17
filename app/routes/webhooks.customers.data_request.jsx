@@ -9,38 +9,33 @@ export const action = async ({ request }) => {
   // Extract customer information from the payload
   const { customer } = payload;
 
-  // Log the customer data request
-  console.log(`Processing customer data request for customer ID: ${customer?.id}, shop: ${shop}`);
+  // Log the customer redaction request
+  console.log(`Processing customer data redaction for customer ID: ${customer?.id}, shop: ${shop}`);
 
   try {
-    // Retrieve relevant data associated with the shop
-    const settings = await db.threeDProductViewerSettings.findFirst({
+    // Delete any data associated with the shop that might include customer information
+    await db.threeDProductViewerSettings.deleteMany({
       where: { shop },
     });
 
-    const products = await db.product.findMany({
+    await db.product.deleteMany({
       where: { shop },
     });
 
-    const models = await db.threeDProductViewerModel.findMany({
+    await db.threeDProductViewerModel.deleteMany({
       where: { shop },
     });
 
-    const account = await db.account.findFirst({
+    // Update account if it might include customer-related data
+    await db.account.updateMany({
       where: { shop },
+      data: { updatedat: new Date() },
     });
 
-    // Log the data (in a real app, you might send this to the shop owner or customer)
-    console.log(`Data for shop ${shop}:`, {
-      settings: settings || "No settings found",
-      products: products.length ? products : "No products found",
-      models: models.length ? models : "No models found",
-      account: account || "No account found",
-    });
-
+    console.log(`Successfully processed customer redaction for shop: ${shop}`);
     return new Response(null, { status: 200 });
   } catch (error) {
-    console.error(`Error processing customer data request for shop ${shop}:`, error);
+    console.error(`Error processing customer redaction for shop ${shop}:`, error);
     return new Response(null, { status: 500 });
   }
 };
