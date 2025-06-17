@@ -14,11 +14,15 @@ export const action = async ({ request }) => {
 
   try {
     // Retrieve relevant data associated with the shop
-    const settings = await db.ageVerificationSettings.findFirst({
+    const settings = await db.threeDProductViewerSettings.findFirst({
       where: { shop },
     });
 
-    const rules = await db.ageVerificationRules.findFirst({
+    const products = await db.product.findMany({
+      where: { shop },
+    });
+
+    const models = await db.threeDProductViewerModel.findMany({
       where: { shop },
     });
 
@@ -29,7 +33,8 @@ export const action = async ({ request }) => {
     // Log the data (in a real app, you might send this to the shop owner or customer)
     console.log(`Data for shop ${shop}:`, {
       settings: settings || "No settings found",
-      rules: rules || "No rules found",
+      products: products.length ? products : "No products found",
+      models: models.length ? models : "No models found",
       account: account || "No account found",
     });
 
