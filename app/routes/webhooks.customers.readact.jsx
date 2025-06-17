@@ -14,11 +14,15 @@ export const action = async ({ request }) => {
 
   try {
     // Delete any data associated with the shop that might include customer information
-    await db.ageVerificationSettings.deleteMany({
+    await db.threeDProductViewerSettings.deleteMany({
       where: { shop },
     });
 
-    await db.ageVerificationRules.deleteMany({
+    await db.product.deleteMany({
+      where: { shop },
+    });
+
+    await db.threeDProductViewerModel.deleteMany({
       where: { shop },
     });
 
